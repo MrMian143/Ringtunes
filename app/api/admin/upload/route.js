@@ -1,39 +1,47 @@
-import { requireAuthOr401 } from "@/lib/auth";
-import { uploadAudio, addRingtone } from "@/lib/data";
+import { handleUpload } from "@vercel/blob/client";
+import { isAuthed } from "@/lib/auth";
+
+const MAX_SIZE = 15 * 1024 * 1024; // 15MB, same limit the UI has always advertised
 
 export async function POST(request) {
-  const unauthorized = requireAuthOr401();
-  if (unauthorized) return unauthorized;
+  const body = await request.json();
 
-  const form = await request.formData();
-  const file = form.get("file");
-  const title = (form.get("title") || "").toString().trim();
-  const category = (form.get("category") || "").toString().trim().toLowerCase();
+  try {
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => {
+        // Only a logged-in admin may request an upload token.
+        if (!isAuthed()) {
+          throw new Error("Unauthorized");
+        }
 
-  if (!file || !(file instanceof File)) {
-    return Response.json({ error: "Audio file zaroori hai." }, { status: 400 });
+        return {
+          allowedContentTypes: [
+            "audio/mpeg",
+            "audio/mp3",
+            "audio/mp4",
+            "audio/x-m4a",
+            "audio/ogg",
+            "audio/wav",
+            "audio/webm",
+          ],
+          addRandomSuffix: true,
+          maximumSizeInBytes: MAX_SIZE,
+        };
+      },
+      onUploadCompleted: async ({ blob }) => {
+        // Metadata (title/category) is saved by the client right after
+        // upload() resolves — see /api/admin/save. Nothing to persist here,
+        // this just confirms the upload landed in Blob storage.
+        console.log("Blob upload completed:", blob.url);
+      },
+    });
+
+    return Response.json(jsonResponse);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Upload token fail ho gaya.";
+    const status = message === "Unauthorized" ? 401 : 400;
+    return Response.json({ error: message }, { status });
   }
-  if (!title || !category) {
-    return Response.json({ error: "Title aur category zaroori hain." }, { status: 400 });
-  }
-  if (!file.type.startsWith("audio/")) {
-    return Response.json({ error: "Sirf audio files allowed hain (mp3, m4a, ogg, wav)." }, { status: 400 });
-  }
-  if (file.size > 15 * 1024 * 1024) {
-    return Response.json({ error: "File 15MB se choti honi chahiye." }, { status: 400 });
-  }
-
-  const audioUrl = await uploadAudio(file);
-
-  const entry = {
-    id: crypto.randomUUID(),
-    title,
-    category,
-    audioUrl,
-    createdAt: Date.now(),
-  };
-
-  await addRingtone(entry);
-
-  return Response.json({ ok: true, ringtone: entry });
 }

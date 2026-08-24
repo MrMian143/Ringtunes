@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 
 export default function AdminDashboard({ initialRingtones }) {
   const router = useRouter();
@@ -22,26 +23,39 @@ export default function AdminDashboard({ initialRingtones }) {
     setUploading(true);
     setError("");
 
-    const form = new FormData();
-    form.append("file", file);
-    form.append("title", title);
-    form.append("category", category);
+    try {
+      // File goes straight from the browser to Vercel Blob storage — it
+      // never passes through our serverless function, so there's no
+      // server body-size limit to worry about.
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const blob = await upload(`audio/${safeName}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload",
+      });
 
-    const res = await fetch("/api/admin/upload", { method: "POST", body: form });
-    const data = await res.json();
+      const res = await fetch("/api/admin/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, category, audioUrl: blob.url }),
+      });
+      const data = await res.json();
 
-    setUploading(false);
+      if (!res.ok) {
+        setError(data.error || "Upload fail ho gaya.");
+        setUploading(false);
+        return;
+      }
 
-    if (!res.ok) {
-      setError(data.error || "Upload fail ho gaya.");
-      return;
+      setRingtones((prev) => [data.ringtone, ...prev]);
+      setTitle("");
+      setCategory("");
+      setFile(null);
+      setFileInputKey((k) => k + 1);
+    } catch (err) {
+      setError(err?.message || "Upload fail ho gaya. Dobara try karein.");
+    } finally {
+      setUploading(false);
     }
-
-    setRingtones((prev) => [data.ringtone, ...prev]);
-    setTitle("");
-    setCategory("");
-    setFile(null);
-    setFileInputKey((k) => k + 1);
   }
 
   async function handleDelete(id) {

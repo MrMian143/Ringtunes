@@ -11,7 +11,7 @@ app/
   page.js                 → homepage (categories)
   category/[slug]/page.js → ek category ke ringtones
   admin/page.js            → admin login + dashboard
-  api/admin/...            → login, upload, delete routes
+  api/admin/...            → login, upload (Blob token route), save, delete
 components/                → Header, Footer, RingtoneRow, AdminLogin, AdminDashboard
 lib/
   data.js                  → Vercel Blob se read/write
@@ -50,8 +50,10 @@ Blob → `.env.local` tab se copy kar lein.
 
 ## Notes
 
-- Har audio file max **15MB** honi chahiye (`lib` mein se limit change kar
-  sakte hain: `app/api/admin/upload/route.js`).
+- Har audio file max **15MB** honi chahiye (limit `app/api/admin/upload/route.js`
+  mein `MAX_SIZE` se change ho sakti hai). File seedha browser se Blob storage
+  pe jaati hai (client upload), server function se nahi guzarti — is liye
+  Vercel ki 4.5MB request-size limit yahan apply nahi hoti.
 - Categories khud-ba-khud ban jaati hain — jo bhi category name aap upload
   ke waqt likhenge, wahi homepage par card ban kar aa jayega.
 - Design tokens (colors/fonts) `tailwind.config.js` aur `app/layout.js` mein
