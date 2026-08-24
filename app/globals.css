@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0f0e17;
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(124, 108, 242, 0.16), transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(242, 169, 59, 0.10), transparent 40%);
+  color: #f3f0ff;
+}
+
+::selection {
+  background: #f2a93b;
+  color: #0f0e17;
+}
+
+/* visible keyboard focus everywhere */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #f2a93b;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+input::placeholder {
+  color: #948fb0;
+}
+
+audio {
+  display: none;
+}
