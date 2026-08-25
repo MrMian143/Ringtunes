@@ -52,6 +52,10 @@ export default function AdminDashboard({ initialRingtones }) {
       setFile(null);
       setFileInputKey((k) => k + 1);
     } catch (err) {
+      // Log the raw error to the browser console — the Blob client often
+      // wraps the real server error in a generic message, so this is the
+      // fastest way to see what actually happened during debugging.
+      console.error("Ringtone upload failed:", err);
       setError(err?.message || "Upload fail ho gaya. Dobara try karein.");
     } finally {
       setUploading(false);
