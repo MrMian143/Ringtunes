@@ -12,6 +12,7 @@ export default function AdminDashboard({ initialRingtones }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [fileInputKey, setFileInputKey] = useState(0);
 
   async function handleUpload(e) {
@@ -21,7 +22,14 @@ export default function AdminDashboard({ initialRingtones }) {
       return;
     }
     setUploading(true);
+    setProgress(0);
     setError("");
+
+    // Neither fetch() nor the Blob client has a default timeout, so a
+    // stalled connection (weak/unstable network) would otherwise hang the
+    // button forever with no feedback. Abort and show a clear error instead.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000); // 90s
 
     try {
       // File goes straight from the browser to Vercel Blob storage — it
@@ -31,12 +39,15 @@ export default function AdminDashboard({ initialRingtones }) {
       const blob = await upload(`audio/${safeName}`, file, {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
+        abortSignal: controller.signal,
+        onUploadProgress: (event) => setProgress(Math.round(event.percentage)),
       });
 
       const res = await fetch("/api/admin/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, category, audioUrl: blob.url }),
+        signal: controller.signal,
       });
       const data = await res.json();
 
@@ -56,9 +67,15 @@ export default function AdminDashboard({ initialRingtones }) {
       // wraps the real server error in a generic message, so this is the
       // fastest way to see what actually happened during debugging.
       console.error("Ringtone upload failed:", err);
-      setError(err?.message || "Upload fail ho gaya. Dobara try karein.");
+      if (err?.name === "AbortError") {
+        setError("Upload 90 second se zyada le raha tha, is liye rok diya. Internet check kar ke dobara try karein.");
+      } else {
+        setError(err?.message || "Upload fail ho gaya. Dobara try karein.");
+      }
     } finally {
+      clearTimeout(timeout);
       setUploading(false);
+      setProgress(0);
     }
   }
 
@@ -124,7 +141,7 @@ export default function AdminDashboard({ initialRingtones }) {
           disabled={uploading}
           className="rounded-lg bg-amber text-ink font-medium py-2.5 hover:brightness-105 transition disabled:opacity-60"
         >
-          {uploading ? "Upload ho raha hai..." : "Upload karein"}
+          {uploading ? `Upload ho raha hai... ${progress}%` : "Upload karein"}
         </button>
       </form>
 
