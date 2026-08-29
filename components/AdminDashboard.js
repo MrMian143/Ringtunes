@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { upload } from "@vercel/blob/client";
 
 export default function AdminDashboard({ initialRingtones }) {
   const router = useRouter();
@@ -12,7 +11,6 @@ export default function AdminDashboard({ initialRingtones }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [fileInputKey, setFileInputKey] = useState(0);
 
   async function handleUpload(e) {
@@ -22,38 +20,19 @@ export default function AdminDashboard({ initialRingtones }) {
       return;
     }
     setUploading(true);
-    setProgress(0);
     setError("");
 
-    // Neither fetch() nor the Blob client has a default timeout, so a
-    // stalled connection (weak/unstable network) would otherwise hang the
-    // button forever with no feedback. Abort and show a clear error instead.
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5 * 60_000); // 5 minutes
+    const form = new FormData();
+    form.append("file", file);
+    form.append("title", title);
+    form.append("category", category);
 
     try {
-      // File goes straight from the browser to Vercel Blob storage — it
-      // never passes through our serverless function, so there's no
-      // server body-size limit to worry about.
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      const blob = await upload(`audio/${safeName}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload",
-        abortSignal: controller.signal,
-        onUploadProgress: (event) => setProgress(Math.round(event.percentage)),
-      });
-
-      const res = await fetch("/api/admin/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, category, audioUrl: blob.url }),
-        signal: controller.signal,
-      });
+      const res = await fetch("/api/admin/upload", { method: "POST", body: form });
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error || "Upload fail ho gaya.");
-        setUploading(false);
         return;
       }
 
@@ -63,19 +42,10 @@ export default function AdminDashboard({ initialRingtones }) {
       setFile(null);
       setFileInputKey((k) => k + 1);
     } catch (err) {
-      // Log the raw error to the browser console — the Blob client often
-      // wraps the real server error in a generic message, so this is the
-      // fastest way to see what actually happened during debugging.
       console.error("Ringtone upload failed:", err);
-      if (err?.name === "AbortError") {
-        setError("Upload 5 minute se zyada le raha tha, is liye rok diya. Internet check kar ke dobara try karein (chota file ya behtar connection try karein).");
-      } else {
-        setError(err?.message || "Upload fail ho gaya. Dobara try karein.");
-      }
+      setError("Upload fail ho gaya. Dobara try karein.");
     } finally {
-      clearTimeout(timeout);
       setUploading(false);
-      setProgress(0);
     }
   }
 
@@ -123,7 +93,7 @@ export default function AdminDashboard({ initialRingtones }) {
         </label>
 
         <label className="text-sm text-muted">
-          Audio file (mp3, m4a, ogg — max 15MB)
+          Audio file (mp3, m4a, ogg — max 4MB)
           <input
             key={fileInputKey}
             type="file"
@@ -141,7 +111,7 @@ export default function AdminDashboard({ initialRingtones }) {
           disabled={uploading}
           className="rounded-lg bg-amber text-ink font-medium py-2.5 hover:brightness-105 transition disabled:opacity-60"
         >
-          {uploading ? `Upload ho raha hai... ${progress}%` : "Upload karein"}
+          {uploading ? "Upload ho raha hai..." : "Upload karein"}
         </button>
       </form>
 
