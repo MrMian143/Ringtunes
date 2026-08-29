@@ -29,7 +29,7 @@ export default function AdminDashboard({ initialRingtones }) {
     // stalled connection (weak/unstable network) would otherwise hang the
     // button forever with no feedback. Abort and show a clear error instead.
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90_000); // 90s
+    const timeout = setTimeout(() => controller.abort(), 5 * 60_000); // 5 minutes
 
     try {
       // File goes straight from the browser to Vercel Blob storage — it
@@ -68,7 +68,7 @@ export default function AdminDashboard({ initialRingtones }) {
       // fastest way to see what actually happened during debugging.
       console.error("Ringtone upload failed:", err);
       if (err?.name === "AbortError") {
-        setError("Upload 90 second se zyada le raha tha, is liye rok diya. Internet check kar ke dobara try karein.");
+        setError("Upload 5 minute se zyada le raha tha, is liye rok diya. Internet check kar ke dobara try karein (chota file ya behtar connection try karein).");
       } else {
         setError(err?.message || "Upload fail ho gaya. Dobara try karein.");
       }
