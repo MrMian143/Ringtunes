@@ -40,6 +40,7 @@ export default function AdminDashboard({ initialRingtones }) {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
         abortSignal: controller.signal,
+        multipart: true,
         onUploadProgress: (event) => setProgress(Math.round(event.percentage)),
       });
 
