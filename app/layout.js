@@ -29,6 +29,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6448682764087660"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className={`${display.variable} ${body.variable} ${mono.variable} font-body min-h-screen flex flex-col`}>
         <Header />
         <main className="flex-1">{children}</main>
